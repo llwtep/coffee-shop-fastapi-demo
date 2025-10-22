@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  web:
+    build: .
+    container_name: coffee_api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery -A app.workers.celery_app.celery_app beat --loglevel=info
+    depends_on:
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app

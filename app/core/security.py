@@ -1,0 +1,45 @@
+import asyncio
+from datetime import timedelta, datetime, UTC
+from typing import Optional
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from app.core.config import JWT_SECRET_KEY
+from concurrent.futures import ThreadPoolExecutor
+
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 15
+
+pwd_context = CryptContext(schemes=['argon2'], deprecated='auto')
+executor = ThreadPoolExecutor(max_workers=4)
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+async def verify_password(password: str, hashed_password: str) -> bool:
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(executor, pwd_context.verify, password, hashed_password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({'exp': expire})
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+
+def create_refresh_token(data: dict):
+    expire = datetime.now(UTC) + timedelta(days=7)
+    to_encode = {"sub": data["sub"], "exp": expire}
+    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_access_token(token: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+
+

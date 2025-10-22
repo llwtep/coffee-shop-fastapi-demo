@@ -1,0 +1,101 @@
+# -------------------------
+# Python
+# -------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+*.env.bak
+*.env.local
+
+# Byte-compiled
+*.pdb
+*.log
+
+# -------------------------
+# FastAPI / Alembic / SQLAlchemy
+# -------------------------
+migrations/versions/__pycache__/
+alembic.ini.bak
+
+# SQLite (if used locally)
+*.db
+*.sqlite3
+
+# -------------------------
+# Environment & Secrets
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# IDE & Editors
+# -------------------------
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# -------------------------
+# OS Generated Files
+# -------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -------------------------
+# Docker
+# -------------------------
+*.pid
+*.seed
+*.pid.lock
+docker-compose.override.yml
+*.log
+**/tmp/
+**/cache/
+**/__pycache__/
+**/*.pyc
+
+# Ignore local build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -------------------------
+# Celery & Redis
+# -------------------------
+celerybeat-schedule
+celerybeat.pid
+
+# -------------------------
+# Testing
+# -------------------------
+.coverage
+.cache/
+pytest_cache/
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+
+# -------------------------
+# Misc
+# -------------------------
+*.bak
+*.tmp
+*.swp
+*.old
+*.orig
