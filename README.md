@@ -75,22 +75,6 @@ You must create a `.env` file in the project root with the following content:
 > 📝 Note: `EMAIL` and `PASS` are used for sending verification emails.
 
 ---
-
-## 🗄️ Database Setup and Alembic Migrations
-
-This project **does not create a database inside Docker** —  
-you must connect to your **own external PostgreSQL database**.
-
-Before starting the application in Docker, apply the Alembic migrations manually:
-
-```bash
-# Apply migrations to your database
-alembic upgrade head
-```
-Make sure your .env file contains correct PostgreSQL connection credentials.
-
-
----
 ## 🐳 Docker Instructions
 1️⃣ Build Docker Image
 ```bash
