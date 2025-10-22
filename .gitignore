@@ -24,6 +24,7 @@ ENV/
 # -------------------------
 # FastAPI / Alembic / SQLAlchemy
 # -------------------------
+
 migrations/versions/__pycache__/
 alembic.ini.bak
 

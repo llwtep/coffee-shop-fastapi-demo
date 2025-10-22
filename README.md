@@ -84,13 +84,7 @@ you must connect to your **own external PostgreSQL database**.
 Before starting the application in Docker, apply the Alembic migrations manually:
 
 ```bash
-# 1. Initialize alembic (already done)
-alembic init migrations
-
-# 2. Generate migration scripts (if needed)
-alembic revision --autogenerate -m "Initial migration"
-
-# 3. Apply migrations to your database
+# Apply migrations to your database
 alembic upgrade head
 ```
 Make sure your .env file contains correct PostgreSQL connection credentials.
