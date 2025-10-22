@@ -72,7 +72,7 @@ You must create a `.env` file in the project root with the following content:
 **EMAIL=**  
 **PASS=**  
 
-> 📝 Note: `EMAIL` and `PASS` are used for sending verification emails.
+> 📝 Note: `EMAIL` and `PASS` are used for sending verification emails. If you run **DB** on your local machine, put `DB_HOST=host.docker.internal` in .env 
 
 ---
 ## 🐳 Docker Instructions
