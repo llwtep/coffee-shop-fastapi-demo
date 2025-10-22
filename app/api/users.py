@@ -37,16 +37,10 @@ async def get_user_info(user: UserModel = Depends(get_current_user)):
     - `email`: user's email address
     - `role`: user role (`User` or `Admin`)
     - `is_verified`: email verification status
+    - `id: user id`
     - `created_at`: account creation timestamp
     """
-    return UserReadSchema(
-        name=user.name,
-        surname=user.surname,
-        email=user.email,
-        role=user.role,
-        is_verified=user.is_verified,
-        created_at=user.created_at,
-    )
+    return UserReadSchema.model_validate(user)
 
 
 # ================================================================
