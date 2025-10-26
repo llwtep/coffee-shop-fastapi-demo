@@ -47,6 +47,8 @@ app/
 ├── services/  
 │ ├── init.py  
 │ ├── UserService.py # Business logic for users  
+│ ├── AuthService.py # Business logic for auth  
+│ ├── Exceptions.py # Exceptions for services  
 │  
 ├── utils/  
 │ ├── email_verification.py # Email verification utilities  
