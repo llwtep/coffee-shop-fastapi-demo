@@ -1,8 +1,7 @@
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from app.core.config import DATABASE_URL
-from typing import Annotated
-from fastapi import Depends
+
 
 # async engine
 engine = create_async_engine(
@@ -37,4 +36,3 @@ async def get_session() -> AsyncSession:
             await session.close()
 
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]  # dependency for connecting to db

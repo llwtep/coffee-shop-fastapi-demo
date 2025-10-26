@@ -1,16 +1,18 @@
-from datetime import timedelta
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Response, Cookie
+from fastapi import APIRouter, HTTPException, Request, Response, Cookie, Depends
 from fastapi.responses import HTMLResponse
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_access_token
-from app.db.database import SessionDep
+from starlette.responses import JSONResponse
 from app.schemas.UserSchema import UserCreate, UserSignIn
-from app.services.UserService import (
-    user_exist_by_email,
-    create_user_in_db,
-    verification_process,
-    get_user_by_email
+from app.services.Exceptions import (
+    UserAlreadyExistError,
+    UserNotFoundError,
+    InvalidTokenException,
+    UserAlreadyVerifiedException,
+    InvalidCredentials,
+    UserNotVerifiedException
 )
-from app.utils.email_verification import send_email, verify_email_token
+from app.services.AuthService import AuthService
+from app.api.deps import get_uow
+from app.core.unit_of_work import UnitOfWork
 
 authRouter = APIRouter(prefix='/auth', tags=['auth'])
 
@@ -25,18 +27,18 @@ authRouter = APIRouter(prefix='/auth', tags=['auth'])
     - Sends a verification email asynchronously.
     """,
     responses={
-        200: {"description": "User successfully registered"},
-        400: {"description": "Email already registered"}
+        201: {"description": "User created, check email"},
+        409: {"description": "Email already registered"}
     }
 )
-async def signup(user_in: UserCreate, session: SessionDep, background_tasks: BackgroundTasks):
-    if await user_exist_by_email(user_in.email, session):
-        raise HTTPException(status_code=400, detail="Email already registered")
+async def signup(user_in: UserCreate, uow: UnitOfWork = Depends(get_uow)):
+    service = AuthService(uow)
+    try:
+        new_user = await service.signup(user_in)
+    except UserAlreadyExistError:
+        raise HTTPException(status_code=409, detail="User already exist")
+    return JSONResponse(status_code=201, content={"msg": "User created, check email"})
 
-    new_user = await create_user_in_db(user_in, session)
-    background_tasks.add_task(send_email, new_user.get("email"), new_user.get("email"))
-
-    return {"status_code": 200, "details": "New user registered"}
 
 
 @authRouter.get(
@@ -50,12 +52,21 @@ async def signup(user_in: UserCreate, session: SessionDep, background_tasks: Bac
     """,
     responses={
         200: {"description": "Email successfully verified"},
-        400: {"description": "Invalid or expired verification token"}
+        400: {"description": "Invalid or expired verification token"},
+        409:{"description": "User already verified"}
     }
 )
-async def verification(request: Request, token: str, session: SessionDep):
-    email = await verify_email_token(token, session)
-    await verification_process(email.get("email"), session)
+async def verification(request: Request, token: str, uof: UnitOfWork = Depends(get_uow)):
+    service = AuthService(uof)
+    try:
+        updated_user = await service.verification_process(token)
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    except UserAlreadyVerifiedException:
+        raise HTTPException(status_code=409, detail="User already verified")
+    except InvalidTokenException:
+        raise HTTPException(status_code=400, detail="Token invalid or expired")
+    return HTMLResponse(content="<h1>Email successfully verified!</h1>", status_code=200)
 
 
 @authRouter.post(
@@ -73,23 +84,19 @@ async def verification(request: Request, token: str, session: SessionDep):
         403: {"description": "User not verified"}
     }
 )
-async def signin(user_in: UserSignIn, session: SessionDep, response: Response):
-    user = await get_user_by_email(user_in.email, session)
-    if not user:
-        raise HTTPException(status_code=401, detail="Need registration")
-
-    if not await verify_password(user_in.password, user.password_hash):
+async def signin(user_in: UserSignIn, response: Response, uow: UnitOfWork = Depends(get_uow)):
+    service = AuthService(uow)
+    try:
+        payload = await service.signin(user_in)
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    except InvalidCredentials:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    except UserNotVerifiedException:
+        raise HTTPException(status_code=403, detail="User not verified, check mailbox")
 
-    if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Not verified")
-
-    access_token = create_access_token(
-        data={"sub": str(user.id)},
-        expires_delta=timedelta(minutes=15)
-    )
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
-
+    access_token = payload.get("access_token")
+    refresh_token = payload.get("refresh_token")
     response.set_cookie(
         key="access_token",
         value=access_token,
@@ -119,18 +126,20 @@ async def signin(user_in: UserSignIn, session: SessionDep, response: Response):
     """,
     responses={
         200: {"description": "Access token successfully refreshed"},
-        401: {"description": "No or invalid refresh token"}
+        401: {"description": "No or invalid refresh token"},
+        404: {"description": "User not found"}
     }
 )
-async def refresh(response: Response, refresh_token: str = Cookie(None)):
+async def refresh(response: Response, refresh_token: str = Cookie(None), uow: UnitOfWork = Depends(get_uow)):
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token")
-
-    payload = decode_access_token(refresh_token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid expired refresh token")
-
-    new_access_token = create_access_token(data={"sub": payload["sub"]})
+    service = AuthService(uow)
+    try:
+        new_access_token = await service.refresh_token(refresh_token)
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
+    if new_access_token is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
     response.set_cookie(
         key="access_token",
         value=new_access_token,
@@ -139,5 +148,4 @@ async def refresh(response: Response, refresh_token: str = Cookie(None)):
         samesite="none",
         max_age=60 * 15
     )
-
-    return {"msg": "Access token refreshed"}
+    return {"msg": "Access token successfully refreshed"}

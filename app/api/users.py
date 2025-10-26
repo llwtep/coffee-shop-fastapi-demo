@@ -1,17 +1,13 @@
 from typing import List
+from app.services.Exceptions import PermissionDenied, UserNotFoundError
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.services.UserService import (
-    UserModel,
-    get_current_user,
-    get_all_users,
-    get_user_by_id,
-    delete_user_by_id,
-    update_user_by_id
-)
-from app.schemas.UserSchema import UserReadSchema, UserRole, UserUpdate
-from app.db.database import SessionDep
+from app.services.UserService import UserService
+from app.api.deps import get_uow, get_current_user
+from app.core.unit_of_work import UnitOfWork
+from app.schemas.UserSchema import UserReadSchema, UserUpdate
 
 userRouter = APIRouter(tags=["Users"], prefix="")
+
 
 # ================================================================
 # 🧑 /me — Get current user's info
@@ -27,7 +23,7 @@ userRouter = APIRouter(tags=["Users"], prefix="")
     """,
     status_code=status.HTTP_200_OK,
 )
-async def get_user_info(user: UserModel = Depends(get_current_user)):
+async def get_user_info(current_user: UserReadSchema = Depends(get_current_user)):
     """
     Get current authenticated user's info.
 
@@ -40,7 +36,7 @@ async def get_user_info(user: UserModel = Depends(get_current_user)):
     - `id: user id`
     - `created_at`: account creation timestamp
     """
-    return UserReadSchema.model_validate(user)
+    return current_user
 
 
 # ================================================================
@@ -58,17 +54,18 @@ async def get_user_info(user: UserModel = Depends(get_current_user)):
     status_code=status.HTTP_200_OK,
 )
 async def get_all_users_list(
-    session: SessionDep,
-    current_user: UserModel = Depends(get_current_user),
+        current_user: UserReadSchema = Depends(get_current_user),
+        uow: UnitOfWork = Depends(get_uow)
 ):
     """
     Get all registered users in the system.
 
     **Permissions:** Admin only.
     """
-    if current_user.role == UserRole.ADMIN:
-        return await get_all_users(session)
-    else:
+    service = UserService(uow)
+    try:
+        return await service.get_all_users(current_user.role)
+    except PermissionDenied:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
@@ -87,9 +84,9 @@ async def get_all_users_list(
     status_code=status.HTTP_200_OK,
 )
 async def get_user_by_id_route(
-    session: SessionDep,
-    user_id: str,
-    current_user: UserModel = Depends(get_current_user),
+        user_id: str,
+        current_user: UserReadSchema = Depends(get_current_user),
+        uow: UnitOfWork = Depends(get_uow)
 ):
     """
     Get detailed info about a user by ID.
@@ -99,11 +96,13 @@ async def get_user_by_id_route(
 
     **Permissions:** Admin only.
     """
-    if current_user.role == UserRole.ADMIN:
-        return await get_user_by_id(session, user_id)
-    else:
+    service = UserService(uow)
+    try:
+        return await service.get_user_by_id(user_id, current_user.role)
+    except PermissionDenied:
         raise HTTPException(status_code=403, detail="Forbidden")
-
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
 
 # ================================================================
 # 🗑️ /users/{user_id} — Delete user by ID (admin only)
@@ -119,9 +118,9 @@ async def get_user_by_id_route(
     status_code=status.HTTP_200_OK,
 )
 async def delete_user(
-    session: SessionDep,
-    user_id: str,
-    current_user: UserModel = Depends(get_current_user),
+        user_id: str,
+        current_user: UserReadSchema = Depends(get_current_user),
+        uow: UnitOfWork = Depends(get_uow),
 ):
     """
     Delete a user by ID.
@@ -131,10 +130,13 @@ async def delete_user(
 
     **Permissions:** Admin only.
     """
-    if current_user.role == UserRole.ADMIN:
-        return await delete_user_by_id(session, user_id)
-    else:
+    service = UserService(uow)
+    try:
+        return await service.delete_user_by_id(user_id, current_user.role)
+    except PermissionDenied:
         raise HTTPException(status_code=403, detail="Forbidden")
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")
 
 
 # ================================================================
@@ -153,10 +155,10 @@ async def delete_user(
     status_code=status.HTTP_200_OK,
 )
 async def update_user(
-    session: SessionDep,
-    user_id: str,
-    data: UserUpdate,
-    current_user: UserModel = Depends(get_current_user),
+        user_id: str,
+        user_update_data:UserUpdate,
+        current_user: UserReadSchema = Depends(get_current_user),
+        uow: UnitOfWork = Depends(get_uow),
 ):
     """
     Update user information.
@@ -169,10 +171,12 @@ async def update_user(
     - Admin: can update any user
     - User: can update only their own profile
     """
-    updated_user = await update_user_by_id(
-        session=session,
-        user_id=user_id,
-        update_data=data,
-        role=current_user.role,
-    )
-    return updated_user
+    service = UserService(uow)
+    try:
+        return await service.update_user_by_id(user_id_to_change=user_id,
+                                               update_data=user_update_data,
+                                               owner=current_user)
+    except PermissionDenied:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    except UserNotFoundError:
+        raise HTTPException(status_code=404, detail="User not found")

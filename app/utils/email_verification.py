@@ -1,9 +1,6 @@
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
 from app.core.config import EMAIL, PASS
-from app.db.database import SessionDep
-from app.core.security import create_access_token, decode_access_token
-
-from app.services.UserService import user_exist_by_email
+from app.core.security import create_access_token
 
 conf = ConnectionConfig(
     MAIL_USERNAME=EMAIL,
@@ -17,9 +14,9 @@ conf = ConnectionConfig(
 )
 
 
-async def send_email(email: str, uemail: str):
+async def send_email(email: str):
     token_data = {
-        "email": uemail
+        "email": email
     }
     token = create_access_token(token_data, None)
     template = f"""
@@ -63,9 +60,4 @@ async def send_email(email: str, uemail: str):
     await fm.send_message(message=message)
 
 
-async def verify_email_token(token: str, session: SessionDep) -> dict:
-    payload = decode_access_token(token)
-    if await user_exist_by_email(payload.get("email"), session):
-        return {"email": payload.get("email")}
-    else:
-        return {"email": None}
+

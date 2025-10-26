@@ -14,6 +14,8 @@ executor = ThreadPoolExecutor(max_workers=4)
 
 
 def hash_password(password: str) -> str:
+    if not password:
+        raise ValueError("Password cannot be empty")
     return pwd_context.hash(password)
 
 
@@ -25,21 +27,24 @@ async def verify_password(password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(UTC) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({'exp': expire})
+    to_encode.update({'exp': expire,
+                      "type": "access"})
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_refresh_token(data: dict):
     expire = datetime.now(UTC) + timedelta(days=7)
-    to_encode = {"sub": data["sub"], "exp": expire}
+    to_encode = {"sub": data["sub"],
+                 "exp": expire,
+                 "type": "refresh"}
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[dict]:
+def decode_token(token: str, expected_type: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != expected_type:
+            return None
         return payload
     except JWTError:
         return None
-
-

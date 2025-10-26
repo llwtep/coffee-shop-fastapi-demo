@@ -23,18 +23,23 @@ app/
 │ ├── init.py  
 │ ├── auth.py # Authentication & authorization endpoints  
 │ ├── router.py # Main API router  
-│ ├── users.py # User management endpoints  
+│ ├── users.py # User management endpoints    
+│ ├── deps.py # Dependencies for app
 │  
 ├── core/  
 │ ├── init.py  
 │ ├── config.py # Environment variables and settings  
 │ ├── security.py # JWT creation and password hashing  
+│ ├── unit_of_work.py # Unit of Work  
 │  
 ├── db/  
 │ ├── init.py  
 │ ├── database.py # Async SQLAlchemy database connection  
 │ ├── User.py # SQLAlchemy User model  
 │  
+├── repositories/
+│ ├── init.py 
+│ ├── UserRepo.py # User Repository
 ├── schemas/  
 │ ├── init.py  
 │ ├── UserSchema.py # Pydantic schemas for user requests/responses  
