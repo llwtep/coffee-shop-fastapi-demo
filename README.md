@@ -37,8 +37,8 @@ app/
 │ ├── database.py # Async SQLAlchemy database connection  
 │ ├── User.py # SQLAlchemy User model  
 │  
-├── repositories/
-│ ├── init.py 
+├── repositories/  
+│ ├── init.py   
 │ ├── UserRepo.py # User Repository
 ├── schemas/  
 │ ├── init.py  
