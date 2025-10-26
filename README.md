@@ -39,7 +39,7 @@ app/
 │  
 ├── repositories/  
 │ ├── init.py   
-│ ├── UserRepo.py # User Repository
+│ ├── UserRepo.py # User Repository  
 ├── schemas/  
 │ ├── init.py  
 │ ├── UserSchema.py # Pydantic schemas for user requests/responses  
