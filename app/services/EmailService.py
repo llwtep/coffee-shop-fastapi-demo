@@ -1,25 +1,47 @@
+from datetime import timedelta
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from app.core.config import EMAIL, PASS
+from app.core.config import EMAIL, PASS, API_URL
 from app.core.security import create_access_token
 
-conf = ConnectionConfig(
-    MAIL_USERNAME=EMAIL,
-    MAIL_PASSWORD=PASS,
-    MAIL_FROM=EMAIL,
-    MAIL_PORT=587,
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_STARTTLS=True,
-    MAIL_SSL_TLS=False,
-    USE_CREDENTIALS=True
-)
 
+class EmailService:
+    def __init__(self):
+        self.conf = ConnectionConfig(
+            MAIL_USERNAME=EMAIL,
+            MAIL_PASSWORD=PASS,
+            MAIL_FROM=EMAIL,
+            MAIL_PORT=587,
+            MAIL_SERVER="smtp.gmail.com",
+            MAIL_STARTTLS=True,
+            MAIL_SSL_TLS=False,
+            USE_CREDENTIALS=True,
+        )
+        self.fm = FastMail(self.conf)
 
-async def send_email(email: str):
-    token_data = {
-        "email": email
-    }
-    token = create_access_token(token_data, None)
-    template = f"""
+    async def send_verification_email(self, email: str):
+        token = create_access_token(
+            data={"email": email},
+            expires_delta=timedelta(hours=24)
+        )
+        verify_url = f"{API_URL}/auth/verify/?token={token}"
+        template = self._build_verification_template(verify_url)
+
+        message = MessageSchema(
+            subject="Coffee Shop Account Verification Email",
+            recipients=[email],
+            body=template,
+            subtype="html"
+        )
+
+        try:
+            await self.fm.send_message(message)
+        except Exception as e:
+            print(f"Error sending verification email: {e}")
+            raise
+
+    @staticmethod
+    def _build_verification_template(verify_url: str) -> str:
+        return f"""
         <!DOCTYPE html>
         <html>
           <head>
@@ -36,7 +58,7 @@ async def send_email(email: str):
                   Thank you for registering with <strong>Coffee Shop</strong> 🎉 <br>
                   Please confirm your email address by clicking the button below:
                 </p>
-                <a href="http://127.0.0.1:8000/auth/verify/?token={token}" 
+                <a href="{verify_url}" 
                    style="display:inline-block; margin-top:1.5rem; padding:0.75rem 1.5rem; 
                           background-color:#0275d8; color:#ffffff; text-decoration:none; 
                           border-radius:0.5rem; font-size:1rem; font-weight:bold;">
@@ -50,14 +72,3 @@ async def send_email(email: str):
           </body>
         </html>
         """
-    message = MessageSchema(
-        subject="Coffee Shop Account Verification Email",
-        recipients=[email],
-        body=template,
-        subtype="html"
-    )
-    fm = FastMail(conf)
-    await fm.send_message(message=message)
-
-
-

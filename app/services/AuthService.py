@@ -1,7 +1,6 @@
 from uuid import UUID
 import asyncio
 from app.schemas.UserSchema import UserCreate, UserSignIn, UserReadSchema
-from app.utils.email_verification import send_email
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -17,6 +16,7 @@ from app.services.Exceptions import (
     UserNotVerifiedException
 )
 from app.services.UserService import UserService
+from app.services.EmailService import EmailService
 from app.core.unit_of_work import UnitOfWork
 
 
@@ -53,12 +53,12 @@ class AuthService:
             return UserReadSchema.model_validate(user)
 
     async def signup(self, user_in: UserCreate):
+        email_service = EmailService()
         try:
             new_user = await self.user_service.add_user(user=user_in)
         except UserAlreadyExistError:
             raise UserAlreadyExistError("User already exist")
-
-        asyncio.create_task(send_email(new_user.email))
+        asyncio.create_task(email_service.send_verification_email(new_user.email))
         return new_user
 
     async def signin(self, user_data: UserSignIn):

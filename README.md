@@ -48,10 +48,10 @@ app/
 │ ├── init.py  
 │ ├── UserService.py # Business logic for users  
 │ ├── AuthService.py # Business logic for auth  
-│ ├── Exceptions.py # Exceptions for services  
-│  
-├── utils/  
-│ ├── email_verification.py # Email verification utilities  
+│ ├── Exceptions.py # Exceptions for services 
+│ ├── EmailService.py # Email verification utilities   
+│    
+├── utils/   
 │  
 ├── workers/   
 │ ├── init.py    
@@ -74,6 +74,7 @@ You must create a `.env` file in the project root with the following content:
 **DB_PASSWORD=**  
 **DB_HOST=**  
 **DB_PORT=**  
+**API_URL=**  
 **DB_NAME=**  
 **JWT_SECRET_KEY=**  
 **EMAIL=**  
